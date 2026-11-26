@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>יוצר קלפי דאבל בעיצוב אישי | Dobble Card Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Rubik & Heebo) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- jsPDF for direct client-side PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Heebo', 'Rubik', 'sans-serif'],
+                        heading: ['Rubik', 'Heebo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fff1f2',
+                            100: '#ffe4e6',
+                            500: '#f43f5e',
+                            600: '#e11d48',
+                            700: '#be123c',
+                            800: '#9f1239',
+                        },
+                        accent: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .card-shadow {
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+        }
+
+        .card-hover {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Print Specific Styles for A4 Paper */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+                padding: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-page-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 85mm) !important;
+                grid-template-rows: repeat(3, 85mm) !important;
+                gap: 10mm !important;
+                justify-content: center !important;
+                align-content: center !important;
+                page-break-after: always;
+                height: 270mm;
+            }
+            .print-card-wrapper {
+                width: 85mm;
+                height: 85mm;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-sizing: border-box;
+            }
+            .print-card-wrapper img, .print-card-wrapper canvas {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain;
+            }
+        }
+
+        .print-only {
+            display: none;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-accent-500 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-brand-500/20">
+                    <i class="fa-solid fa-[#57]">🎴</i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black font-heading bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 bg-clip-text text-transparent">
+                        מחולל קלפי דאבל
+                    </h1>
+                    <p class="text-xs text-slate-500 font-medium">עיצוב ויצירת משחק קלפים בעיצוב אישי להדפסה</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <a href="#how-it-works" class="hidden md:flex items-center gap-1.5 text-sm font-semibold text-slate-600 hover:text-brand-600 transition-colors">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>איך זה עובד?</span>
+                </a>
+                <button onclick="window.print()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-print"></i>
+                    <span class="hidden sm:inline">הדפסה מהירה</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 no-print">
+        
+        <!-- Controls Sidebar (4 cols) -->
+        <aside class="lg:col-span-4 space-y-6">
+            
+            <!-- Step 1: Configuration Card -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 card-shadow space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">1</span>
+                        <h2 class="font-bold text-lg text-slate-900">הגדרות המשחק</h2>
+                    </div>
+                    <span id="mathBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        N = 3 (7 תמונות)
+                    </span>
+                </div>
+
+                <!-- Symbol Select -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">כמה סמלים יהיו על כל קלף?</label>
+                    <select id="symbolsSelect" onchange="handleConfigChange()" class="w-full bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-xl p-3 font-semibold focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all">
+                        <option value="3">3 סמלים (7 קלפים / 7 סמלים)</option>
+                        <option value="4" selected>4 סמלים (13 קלפים / 13 סמלים)</option>
+                        <option value="6">6 סמלים (31 קלפים / 31 סמלים)</option>
+                        <option value="8">8 סמלים (57 קלפים / 57 סמלים)</option>
+                    </select>
+                </div>
+
+                <!-- Info summary box -->
+                <div class="bg-slate-50 rounded-2xl p-4 text-xs space-y-2 border border-slate-100">
+                    <div class="flex justify-between text-slate-600">
+                        <span>סה"כ סמלים נדרשים:</span>
+                        <span id="reqSymbolsCount" class="font-bold text-brand-600">13</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>סה"כ קלפים שייווצרו:</span>
+                        <span id="reqCardsCount" class="font-bold text-slate-900">13</span>
+                    </div>
+                    <div class="flex justify-between text-slate-600">
+                        <span>התאמות בין כל זוג קלפים:</span>
+                        <span class="font-bold text-emerald-600">בדיוק סמל 1 משותף!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Upload or Preset selection -->
+            <div class="bg-white rounded-3xl p-6 border border-slate-200 card-shadow space-y-5">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">2</span>
+                        <h2 class="font-bold text-lg text-slate-900">בחירת סמלים ותמונות</h2>
+                    </div>
+                    <span id="uploadStatusBadge" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                        0 / 13
+                    </span>
+                </div>
+
+                <!-- Quick Presets -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">טעינה מהירה של ערכת נושא:</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="loadEmojiPreset('animals')" class="bg-slate-50 hover:bg-brand-50 hover:border-brand-300 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 flex items-center justify-center gap-2 transition-all">
+                            <span>🐶 חיות חמודות</span>
+                        </button>
+                        <button onclick="loadEmojiPreset('food')" class="bg-slate-50 hover:bg-brand-50 hover:border-brand-300 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 flex items-center justify-center gap-2 transition-all">
+                            <span>🍕 אוכל ומתוקים</span>
+                        </button>
+                        <button onclick="loadEmojiPreset('mix')" class="bg-slate-50 hover:bg-brand-50 hover:border-brand-300 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 flex items-center justify-center gap-2 transition-all">
+                            <span>🚀 מגוון ואייקונים</span>
+                        </button>
+                        <button onclick="loadEmojiPreset('numbers')" class="bg-slate-50 hover:bg-brand-50 hover:border-brand-300 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 flex items-center justify-center gap-2 transition-all">
+                            <span>🎨 צבעים ומספרים</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-3 text-slate-400 text-xs font-semibold">או העלאת איורים שלך</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <!-- File Drag and drop -->
+                <div id="dropZone" class="border-2 border-dashed border-slate-300 hover:border-brand-500 rounded-2xl p-5 text-center bg-slate-50/50 hover:bg-brand-50/30 transition-all cursor-pointer">
+                    <input type="file" id="fileInput" multiple accept="image/*" class="hidden" onchange="handleFileUpload(event)">
+                    <div class="flex flex-col items-center justify-center gap-2">
+                        <div class="w-12 h-12 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-xl mb-1">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <p class="text-sm font-bold text-slate-800">לחץ להעלאת תמונות או גרור לכאן</p>
+                        <p class="text-xs text-slate-400">תמיכה ב-PNG, JPG, SVG או WebP</p>
+                    </div>
+                </div>
+
+                <!-- Uploaded Thumbnails Preview Grid -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-bold text-slate-600">תמונות שנטענו (<span id="loadedImagesCount">0</span>):</span>
+                        <button onclick="clearImages()" class="text-xs font-bold text-rose-600 hover:underline">ניקוי הכל</button>
+                    </div>
+                    <div id="thumbnailsContainer" class="flex flex-wrap gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-xl border border-slate-200 min-h-[60px] items-center">
+                        <p id="emptyThumbnailsText" class="text-xs text-slate-400 w-full text-center py-3">עדיין לא נטענו תמונות</p>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button id="generateBtn" onclick="generateDobbleGame()" disabled class="w-full bg-gradient-to-r from-brand-600 to-brand-700 hover:from-brand-700 hover:to-brand-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-brand-600/30 flex items-center justify-center gap-2 text-base transition-all">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>צור קלפי דאבל</span>
+                </button>
+            </div>
+
+            <!-- Export / Download Card -->
+            <div id="exportSection" class="bg-white rounded-3xl p-6 border border-slate-200 card-shadow space-y-4 opacity-60 pointer-events-none transition-all">
+                <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+                    <span class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-sm font-bold">3</span>
+                    <h2 class="font-bold text-lg text-slate-900">הורדה והדפסה</h2>
+                </div>
+                
+                <p class="text-xs text-slate-500">הקלפים מוכנים! ניתן להדפיסם ישירות או לייצא קובץ PDF מוכן לחדר הדפוס.</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="window.print()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all">
+                        <i class="fa-solid fa-print"></i>
+                        <span>הדפסה ב-A4</span>
+                    </button>
+                    
+                    <button onclick="exportToPDF()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/20">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>הורדת PDF</span>
+                    </button>
+                </div>
+            </div>
+
+        </aside>
+
+        <!-- Main Display Area (8 cols) -->
+        <section class="lg:col-span-8 space-y-6">
+
+            <!-- Progress Bar Area (Hidden by default) -->
+            <div id="progressContainer" class="hidden bg-white rounded-2xl p-5 border border-slate-200 card-shadow space-y-3">
+                <div class="flex justify-between items-center text-sm font-bold">
+                    <span id="progressText" class="text-brand-700">מעבד קלפים...</span>
+                    <span id="progressPercent" class="text-slate-600">0%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                    <div id="progressBar" class="bg-gradient-to-r from-brand-500 to-accent-500 h-full w-0 transition-all duration-200 rounded-full"></div>
+                </div>
+            </div>
+
+            <!-- Empty Placeholder Canvas Banner -->
+            <div id="welcomePlaceholder" class="bg-white rounded-3xl p-8 border border-slate-200 card-shadow text-center space-y-4 py-16">
+                <div class="w-20 h-20 mx-auto rounded-3xl bg-brand-50 text-brand-600 flex items-center justify-center text-4xl shadow-inner">
+                    🎴
+                </div>
+                <h3 class="text-2xl font-black text-slate-800 font-heading">מוכנים ליצור משחק דאבל אישי?</h3>
+                <p class="text-slate-500 text-sm max-w-md mx-auto leading-relaxed">
+                    בחרי את מספר הסמלים לקלף, טעני ערכת נושא מוכנה או העלי איורים אישיים ולחצי על 
+                    <span class="font-bold text-brand-600">"צור קלפי דאבל"</span>.
+                </p>
+                <div class="flex justify-center gap-3 pt-2">
+                    <button onclick="loadEmojiPreset('animals')" class="bg-brand-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-brand-700 transition-all shadow-md shadow-brand-600/20">
+                        נסה עכשיו עם סמלי חיות 🐶
+                    </button>
+                </div>
+            </div>
+
+            <!-- Cards Grid Header -->
+            <div id="cardsHeader" class="hidden flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 card-shadow">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <h3 class="font-bold text-slate-800 text-lg">קלפים שיוצרו (<span id="generatedCount">0</span>)</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-slate-500 font-medium">תצוגה מקדימה במודל הדפסה:</span>
+                    <span class="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-bold">A4 (6 קלפים בדף)</span>
+                </div>
+            </div>
+
+            <!-- Generated Cards Grid Container -->
+            <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <!-- Dynamically generated canvas cards go here -->
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Detailed Math & Information Section -->
+    <footer id="how-it-works" class="bg-white border-t border-slate-200 mt-12 py-12 no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            <div class="text-center max-w-2xl mx-auto space-y-2">
+                <h2 class="text-2xl font-black text-slate-900 font-heading">איך עובד מחולל הדאבל?</h2>
+                <p class="text-slate-500 text-sm">הקסם המתמטי שמאחורי המשחק הפופולרי</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/80 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-lg">
+                        📐
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-base">מישור פרויקטיבי סופי</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        האלגוריתם מבוסס על מבנה גיאומטרי הנקרא <b>מישור פרויקטיבי סופי מסדר $N$</b>. בגיאומטריה זו, כל שני קווים נפגשים בדיוק בנקודה אחת.
+                    </p>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/80 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-lg">
+                        🎯
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-base">תמיד סמל אחד משותף</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        אם על כל קלף יש $N+1$ סמלים, המשחק כולו ייכיל $N^2 + N + 1$ קלפים וסמלים. לא משנה אילו שני קלפים תשלפו מהחבילה, יימצא ביניהם <b>בדיוק סמל משותף אחד!</b>
+                    </p>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/80 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-lg">
+                        🎁
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-base">מתנה ומשחק לימודי</h3>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        מתאים ליצירת מתנה אישית עם תמונות משפחתיות, משחק למידה עם מילים/מספרים לגני ילדים, או הפעלה מקורית לימי הולדת ואירועים.
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-center pt-4 border-t border-slate-100 text-xs text-slate-400">
+                © מחולל קלפי דאבל בעיצוב אישי | נבנה עם HTML5 Canvas & Javascript
+            </div>
+        </div>
+    </footer>
+
+    <!-- Hidden Container for Print Layout -->
+    <div id="printContainer" class="print-only"></div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        // --- State Management ---
+        let currentN = 3; // N = symbolsPerCard - 1
+        let requiredSymbolsCount = 13;
+        let loadedSymbols = []; // Stores Array of Image elements or Emoji data URLs
+
+        // Emoji Preset Lists
+        const EMOJI_PRESETS = {
+            animals: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓'],
+            food: ['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌽','🥕','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫'],
+            mix: ['🚀','🛸','🚁','🛶','⛵','🚤','🚗','🚑','🚒','🚓','🚕','🏎️','🚲','🛵','🛴','🛹','🛼','🎯','🎲','🎮','🎰','🎳','🎸','🎺','🎷','🥁','🎨','🎭','🎤','🎧','🎬','🎤','🔮','🧿','💎','💍','👑','👒','🧢','🎓','💄','👠','👟','🧳','🕶️','🌂','🐶','🐱','🦁','🐸','🍕','🍦','🏀','⚽','🏆','⏰','🧲','💣'],
+            numbers: ['1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🤎','⭐','🌟','✨','⚡','💥','🔥','☀️','🌙','☁️','❄️','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','❣','💕','💞','💓','💗','💖','💘','💝','🏁','🚩','🧭','⛵','⚓','⛺','🚨','🔔','🎵','🎶','📢','💬']
+        };
+
+        // Initialize Page
+        window.addEventListener('DOMContentLoaded', () => {
+            handleConfigChange();
+            setupDragAndDrop();
+        });
+
+        // Handle Configuration Selector Changes
+        function handleConfigChange() {
+            const symbolsPerCard = parseInt(document.getElementById('symbolsSelect').value);
+            currentN = symbolsPerCard - 1;
+            requiredSymbolsCount = currentN * currentN + currentN + 1;
+
+            // Update UI elements
+            document.getElementById('reqSymbolsCount').innerText = requiredSymbolsCount;
+            document.getElementById('reqCardsCount').innerText = requiredSymbolsCount;
+            document.getElementById('mathBadge').innerText = `N = ${currentN} (${requiredSymbolsCount} תמונות)`;
+            
+            updateUploadStatusBadge();
+        }
+
+        function updateUploadStatusBadge() {
+            const badge = document.getElementById('uploadStatusBadge');
+            const count = loadedSymbols.length;
+            document.getElementById('loadedImagesCount').innerText = count;
+
+            badge.innerText = `${count} / ${requiredSymbolsCount}`;
+
+            if (count >= requiredSymbolsCount) {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+                document.getElementById('generateBtn').disabled = false;
+            } else {
+                badge.className = "text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200";
+                document.getElementById('generateBtn').disabled = true;
+            }
+        }
+
+        // --- Image & Preset Handling ---
+        function loadEmojiPreset(presetKey) {
+            const emojis = EMOJI_PRESETS[presetKey] || EMOJI_PRESETS.animals;
+            const needed = requiredSymbolsCount;
+            const selectedEmojis = emojis.slice(0, needed);
+
+            loadedSymbols = [];
+            const container = document.getElementById('thumbnailsContainer');
+            container.innerHTML = '';
+
+            let loadedCount = 0;
+            selectedEmojis.forEach((emoji, idx) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 120;
+                canvas.height = 120;
+                const ctx = canvas.getContext('2d');
+                
+                // Draw background & emoji
+                ctx.fillStyle = '#f8fafc';
+                ctx.beginPath();
+                ctx.arc(60, 60, 58, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = '70px Heebo, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(emoji, 60, 65);
+
+                const img = new Image();
+                img.onload = () => {
+                    loadedSymbols.push(img);
+                    addThumbnailUI(img.src, idx);
+                    loadedCount++;
+                    if (loadedCount === selectedEmojis.length) {
+                        updateUploadStatusBadge();
+                    }
+                };
+                img.src = canvas.toDataURL();
+            });
+        }
+
+        function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            files.forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        loadedSymbols.push(img);
+                        addThumbnailUI(e.target.result, loadedSymbols.length - 1);
+                        updateUploadStatusBadge();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function setupDragAndDrop() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-brand-500', 'bg-brand-50/50');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-brand-500', 'bg-brand-50/50');
+                }, false);
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFileUpload({ target: { files: files } });
+            });
+        }
+
+        function addThumbnailUI(src, index) {
+            const container = document.getElementById('thumbnailsContainer');
+            const emptyText = document.getElementById('emptyThumbnailsText');
+            if (emptyText) emptyText.style.display = 'none';
+
+            const thumb = document.createElement('div');
+            thumb.className = 'w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center shrink-0 shadow-sm relative group';
+            thumb.innerHTML = `
+                <img src="${src}" class="w-full h-full object-cover">
+            `;
+            container.appendChild(thumb);
+        }
+
+        function clearImages() {
+            loadedSymbols = [];
+            document.getElementById('thumbnailsContainer').innerHTML = '<p id="emptyThumbnailsText" class="text-xs text-slate-400 w-full text-center py-3">עדיין לא נטענו תמונות</p>';
+            updateUploadStatusBadge();
+        }
+
+        // --- Finite Projective Plane Dobble Algorithm ---
+        function generateDobbleIndices(n) {
+            const cards = [];
+            // Family 1: n + 1 lines through a point
+            for (let i = 0; i < n + 1; i++) {
+                const card = [];
+                for (let j = 0; j < n; j++) {
+                    card.push((i * n) + j);
+                }
+                card.push(n * n + n);
+                cards.push(card);
+            }
+            // Family 2: n * n lines
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    const card = [];
+                    for (let k = 0; k < n; k++) {
+                        card.push(k * n + ((i * k + j) % n));
+                    }
+                    card.push(n * n + i);
+                    cards.push(card);
+                }
+            }
+            return cards;
+        }
+
+        // --- Card Generator & Rendering Engine ---
+        async function generateDobbleGame() {
+            if (loadedSymbols.length < requiredSymbolsCount) {
+                alert(`יש להעלות לפחות ${requiredSymbolsCount} תמונות כדי ליצור את המשחק.`);
+                return;
+            }
+
+            const cardsGrid = document.getElementById('cardsGrid');
+            const printContainer = document.getElementById('printContainer');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const progressPercent = document.getElementById('progressPercent');
+            const welcomePlaceholder = document.getElementById('welcomePlaceholder');
+            const cardsHeader = document.getElementById('cardsHeader');
+            const exportSection = document.getElementById('exportSection');
+
+            // Reset UI
+            cardsGrid.innerHTML = '';
+            printContainer.innerHTML = '';
+            welcomePlaceholder.classList.add('hidden');
+            progressContainer.classList.remove('hidden');
+            cardsHeader.classList.add('hidden');
+
+            const deckIndices = generateDobbleIndices(currentN);
+            const totalCards = deckIndices.length;
+
+            document.getElementById('generatedCount').innerText = totalCards;
+
+            // Layout Parameters based on symbol count
+            const numOnCard = currentN + 1;
+            let radius, maxSymbolDim;
+
+            if (numOnCard <= 3) {
+                radius = 110;
+                maxSymbolDim = 150;
+            } else if (numOnCard <= 4) {
+                radius = 125;
+                maxSymbolDim = 120;
+            } else if (numOnCard <= 6) {
+                radius = 140;
+                maxSymbolDim = 95;
+            } else {
+                radius = 155;
+                maxSymbolDim = 75;
+            }
+
+            let currentPageGrid = null;
+
+            for (let idx = 0; idx < totalCards; idx++) {
+                const cardIndices = deckIndices[idx];
+
+                // Update Progress
+                const percent = Math.round(((idx + 1) / totalCards) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressPercent.innerText = `${percent}%`;
+                progressText.innerText = `מצייר קלף ${idx + 1} מתוך ${totalCards}...`;
+
+                // Render Canvas Card
+                const canvas = document.createElement('canvas');
+                canvas.width = 500;
+                canvas.height = 500;
+                const ctx = canvas.getContext('2d');
+
+                // Draw Outer Circular Card Outline
+                ctx.clearRect(0, 0, 500, 500);
+
+                // Circular card background
+                ctx.beginPath();
+                ctx.arc(250, 250, 235, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.stroke();
+
+                // Inner subtle ring design
+                ctx.beginPath();
+                ctx.arc(250, 250, 228, 0, Math.PI * 2);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#f1f5f9';
+                ctx.stroke();
+
+                // Position Symbols in Circle
+                cardIndices.forEach((symbolIdx, i) => {
+                    const img = loadedSymbols[symbolIdx];
+                    if (!img) return;
+
+                    ctx.save();
+
+                    // Calculate position along circular radius with slight jitter
+                    const angle = (i / numOnCard) * 2 * Math.PI;
+                    const rOffset = (i % 2 === 0) ? radius : radius * 0.85;
+                    const centerX = 250 + Math.cos(angle) * rOffset;
+                    const centerY = 250 + Math.sin(angle) * rOffset;
+
+                    ctx.translate(centerX, centerY);
+
+                    // Random Rotation between 0 and 360 degrees for fun game placement
+                    const randomAngle = ((idx * 37 + i * 53) % 360) * (Math.PI / 180);
+                    ctx.rotate(randomAngle);
+
+                    // Scale Image preserving aspect ratio
+                    let w = img.width;
+                    let h = img.height;
+                    const scale = Math.min(maxSymbolDim / w, maxSymbolDim / h);
+                    w = w * scale;
+                    h = h * scale;
+
+                    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+                    ctx.restore();
+                });
+
+                // Add Card UI Wrapper (For screen display)
+                const cardWrapper = document.createElement('div');
+                cardWrapper.className = 'bg-white p-4 rounded-3xl border border-slate-200 card-shadow card-hover flex flex-col items-center gap-3 relative group';
+
+                const imgDataUrl = canvas.toDataURL('image/png');
+
+                cardWrapper.innerHTML = `
+                    <div class="relative w-full aspect-square flex items-center justify-center">
+                        <img src="${imgDataUrl}" class="w-full h-full object-contain">
+                    </div>
+                    <div class="flex justify-between items-center w-full px-2 pt-2 border-t border-slate-100 text-xs font-bold text-slate-400">
+                        <span>קלף #${idx + 1}</span>
+                        <a href="${imgDataUrl}" download="dobble_card_${idx + 1}.png" class="text-brand-600 hover:text-brand-800 flex items-center gap-1 transition-colors">
+                            <i class="fa-solid fa-download"></i> הורדה
+                        </a>
+                    </div>
+                `;
+                cardsGrid.appendChild(cardWrapper);
+
+                // Add to Printable A4 Layout (6 cards per grid page)
+                if (idx % 6 === 0) {
+                    currentPageGrid = document.createElement('div');
+                    currentPageGrid.className = 'print-page-grid';
+                    printContainer.appendChild(currentPageGrid);
+                }
+
+                const printCardWrapper = document.createElement('div');
+                printCardWrapper.className = 'print-card-wrapper';
+                const printImg = document.createElement('img');
+                printImg.src = imgDataUrl;
+                printCardWrapper.appendChild(printImg);
+                currentPageGrid.appendChild(printCardWrapper);
+
+                // Small pause to give UI room to update progress
+                await new Promise(r => setTimeout(r, 15));
+            }
+
+            // Finish Progress UI
+            progressContainer.classList.add('hidden');
+            cardsHeader.classList.remove('hidden');
+            exportSection.classList.remove('opacity-60', 'pointer-events-none');
+        }
+
+        // --- Export to PDF using jsPDF ---
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+
+            const canvases = Array.from(document.querySelectorAll('#cardsGrid canvas'));
+            if (!canvases.length) {
+                alert('אנא צור קודם את הקלפים.');
+                return;
+            }
+
+            const cardSizeMM = 85;
+            const marginX = 15;
+            const marginY = 15;
+            const spacingX = 10;
+            const spacingY = 10;
+
+            for (let i = 0; i < canvases.length; i += 6) {
+                if (i > 0) pdf.addPage();
+
+                for (let j = 0; j < 6; j++) {
+                    const idx = i + j;
+                    if (idx >= canvases.length) break;
+
+                    const col = j % 2;
+                    const row = Math.floor(j / 2);
+
+                    const x = marginX + col * (cardSizeMM + spacingX);
+                    const y = marginY + row * (cardSizeMM + spacingY);
+
+                    const imgData = canvases[idx].toDataURL('image/png');
+
+                    // Draw image card
+                    pdf.addImage(imgData, 'PNG', x, y, cardSizeMM, cardSizeMM);
+
+                    // Draw fine cutting guide circle around card
+                    pdf.setDrawColor(220, 220, 220);
+                    pdf.setLineWidth(0.2);
+                    pdf.circle(x + cardSizeMM / 2, y + cardSizeMM / 2, cardSizeMM / 2);
+                }
+            }
+
+            pdf.save('dobble_game_cards.pdf');
+        }
+    </script>
+</body>
+</html>
